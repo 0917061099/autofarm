@@ -1,6 +1,8 @@
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local workspace = game:GetService("Workspace")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
 
 local platformCount = 9
 local farmCount = 0
@@ -8,6 +10,7 @@ local totalCoinsEarned = 0
 local goldPerRound = 132 -- ปรับตามจริง
 local startTime = os.clock()
 
+-- 🧠 GUI แสดงข้อมูล
 local function createFarmCounterGUI()
     if player:FindFirstChild("PlayerGui"):FindFirstChild("FarmCounterGUI") then return end
 
@@ -23,49 +26,50 @@ local function createFarmCounterGUI()
     bg.Position = UDim2.new(0, 0, 0, 0)
     bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     bg.BackgroundTransparency = 0
-    bg.Parent = screenGui
     bg.ZIndex = 0
+    bg.Parent = screenGui
 
+    -- รอบ
     local label1 = Instance.new("TextLabel")
     label1.Name = "FarmCounterLabel"
     label1.Size = UDim2.new(0, 250, 0, 40)
     label1.Position = UDim2.new(0, 10, 0, 10)
     label1.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    label1.BackgroundTransparency = 0
     label1.TextColor3 = Color3.fromRGB(255, 255, 0)
     label1.Font = Enum.Font.GothamBold
     label1.TextScaled = true
     label1.Text = "รอบที่: 0"
-    label1.Parent = screenGui
     label1.ZIndex = 1
+    label1.Parent = screenGui
 
+    -- รวมเงิน
     local label2 = Instance.new("TextLabel")
     label2.Name = "CoinCounterLabel"
     label2.Size = UDim2.new(0, 250, 0, 40)
     label2.Position = UDim2.new(0, 10, 0, 55)
     label2.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    label2.BackgroundTransparency = 0
     label2.TextColor3 = Color3.fromRGB(0, 255, 0)
     label2.Font = Enum.Font.GothamBold
     label2.TextScaled = true
     label2.Text = "ได้เงินรวม: 0"
-    label2.Parent = screenGui
     label2.ZIndex = 1
+    label2.Parent = screenGui
 
+    -- เงินต่อนาที
     local label3 = Instance.new("TextLabel")
     label3.Name = "RatePerMinuteLabel"
     label3.Size = UDim2.new(0, 250, 0, 40)
     label3.Position = UDim2.new(0, 10, 0, 100)
     label3.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    label3.BackgroundTransparency = 0
     label3.TextColor3 = Color3.fromRGB(0, 200, 255)
     label3.Font = Enum.Font.GothamBold
     label3.TextScaled = true
     label3.Text = "เงินต่อนาที: 0"
-    label3.Parent = screenGui
     label3.ZIndex = 1
+    label3.Parent = screenGui
 end
 
+-- อัปเดต GUI
 local function updateFarmCounter()
     local gui = player:FindFirstChild("PlayerGui"):FindFirstChild("FarmCounterGUI")
     if gui then
@@ -90,6 +94,7 @@ local function updateFarmCounter()
     end
 end
 
+-- หาตำแหน่ง DarknessPart
 local function getDarknessPartPos(index)
     local success, pos = pcall(function()
         local caveStage = workspace:WaitForChild("BoatStages", 10)
@@ -100,6 +105,7 @@ local function getDarknessPartPos(index)
     return success and pos or nil
 end
 
+-- สร้างแพ
 local function createPlatformAtPosition(index, position)
     local platform = Instance.new("Part")
     platform.Name = "AutoPlatform_" .. index
@@ -112,6 +118,7 @@ local function createPlatformAtPosition(index, position)
     return platform
 end
 
+-- เทเลพอร์ตข้ามแพ
 local function teleportAndManagePlatforms(hrp)
     local currentPlatform = nil
     for i = 1, platformCount do
@@ -142,23 +149,53 @@ local function teleportAndManagePlatforms(hrp)
     end
 end
 
+-- หา server ใหม่และ teleport
+local function getNewServer()
+    local PlaceId = game.PlaceId
+    local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+    for _, server in pairs(servers.data) do
+        if server.playing < server.maxPlayers and server.id ~= game.JobId then
+            return server.id
+        end
+    end
+    return nil
+end
+
+local function hopToNewServer()
+    local newServerId = getNewServer()
+    if newServerId then
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, newServerId, player)
+    else
+        warn("❌ ไม่พบเซิร์ฟใหม่ กำลังลองใหม่...")
+        task.wait(5)
+        hopToNewServer()
+    end
+end
+
+-- รันฟาร์มวน + hop ทุก 15 นาที
 local function runAutoFarm()
     createFarmCounterGUI()
-
     while true do
         local char = player.Character or player.CharacterAdded:Wait()
         local hrp = char:WaitForChild("HumanoidRootPart")
 
         wait(5)
-
         teleportAndManagePlatforms(hrp)
 
         totalCoinsEarned += goldPerRound
         farmCount += 1
         updateFarmCounter()
 
+        -- ครบ 15 นาที = 900 วิ → hop
+        local elapsed = os.clock() - startTime
+        if elapsed >= 900 then
+            hopToNewServer()
+            break
+        end
+
         player.CharacterAdded:Wait()
     end
 end
 
+-- 🔁 เริ่มรัน
 runAutoFarm()
