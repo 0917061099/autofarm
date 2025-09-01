@@ -88,7 +88,7 @@ local function tpToGoldenChestUntilInstaLoad(hrp)
         -- ถ้าไม่เจอซ้ำ ๆ เกิน 60 วินาที ให้รอ 1 นาทีแล้วออก
         if not found and os.clock() - startCheck >= 60 then
             print("❌ ไม่พบ InstaLoad Function หลัง TP ซ้ำ ๆ รอ 1 นาที แล้วเริ่มรอบใหม่")
-            wait(4)
+            wait(5)
             break
         end
     end
