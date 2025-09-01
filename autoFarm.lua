@@ -88,7 +88,7 @@ local function tpToGoldenChestUntilInstaLoad(hrp)
         -- ถ้าไม่เจอซ้ำ ๆ เกิน 60 วินาที ให้รอ 1 นาทีแล้วออก
         if not found and os.clock() - startCheck >= 60 then
             print("❌ ไม่พบ InstaLoad Function หลัง TP ซ้ำ ๆ รอ 1 นาที แล้วเริ่มรอบใหม่")
-            wait(5)
+            wait(1)
             break
         end
     end
@@ -104,7 +104,7 @@ local function getNewServer()
     local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
     for _, server in pairs(servers.data) do
         if server.playing < server.maxPlayers and server.id ~= game.JobId then
-            return server.id
+         return server.id
         end
     end
     return nil
